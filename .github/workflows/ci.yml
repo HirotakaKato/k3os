@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  VERSION:      0.21.5-k3s2r1
+  ISO_CHECKSUM: sha256:a465b0c52ce415173f6ef38fda5d090580fbaae0970556a62f21c7db8eeb72b1
+
+jobs:
+  build:
+    runs-on:  macos-10.15
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: packer_cache
+          key:  ${{env.ISO_CHECKSUM}}
+      - name: Run packer build
+        env:
+          VAGRANT_CLOUD_TOKEN: ${{secrets.VAGRANT_CLOUD_TOKEN}}
+        run: |
+          set -eux
+          VBoxManage -v
+          packer -v
+          packer build -only=virtualbox-iso \
+            -var version=$VERSION \
+            -var headless=true \
+            -var iso_url=https://github.com/rancher/k3os/releases/download/v$VERSION/k3os-amd64.iso \
+            -var iso_checksum=$ISO_CHECKSUM \
+            -var box_tag=HirotakaKato/k3os \
+            template.json
+          shasum -a 256 box/virtualbox/*.box
